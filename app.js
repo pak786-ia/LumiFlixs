@@ -1,24 +1,19 @@
 // LumiFlix - Main Application
 class LumiFlix {
     constructor() {
-        // Auto-detect backend URL
-        const hostname = window.location.hostname;
-        this.backendPort = 3005;
-        this.backendUrl = `http://${hostname}:${this.backendPort}`;
+        // Auto-detect environment and set API URL
+        this.backendUrl = this.getBackendUrl();
         
         // ===== VERSION CONTROL =====
-        // MANUALLY CHANGE THIS FOR MAJOR UPDATES THAT NEED CACHE CLEAR
-        this.appVersion = '2.1.2'; // Updated version
+        this.appVersion = '2.1.2';
         
         // ===== AUTO-UPDATE FEATURE =====
         this.autoUpdateEnabled = true;
         this.updateCheckInterval = 30 * 60 * 1000;
         this.lastContentUpdate = null;
         this.contentVersion = this.loadContentVersion();
-        // ===============================
         
-        this.checkAndClearCache();
-        
+        // TMDB API Key (for development only, consider moving to backend)
         this.tmdbApiKey = '8d576c8468ee033709f1ea35619de69d';
         this.tmdbBase = 'https://api.themoviedb.org/3';
         this.tmdbImageBase = 'https://image.tmdb.org/t/p/';
@@ -27,7 +22,6 @@ class LumiFlix {
         this.currentMedia = null;
         this.currentEpisode = null;
         
-        // Add loading flag to prevent multiple detail loads
         this.isLoadingDetail = false;
         
         // Load data
@@ -42,24 +36,29 @@ class LumiFlix {
         this.isLoading = false;
         this.isPlaying = false;
         
-        // Screen orientation state
         this.wasLandscape = false;
         this.orientationHandler = null;
-        
-        // Controls auto-hide
         this.controlsTimeout = null;
         this.isControlsVisible = true;
-        
-        // Fullscreen state
         this.wasFullscreen = false;
         
-        // Cached content for auto-update
         this.cachedContent = this.loadCachedContent();
         
         this.init();
     }
     
-    // ============== AUTO-UPDATE FEATURE ==============
+    // Get backend URL based on environment
+    getBackendUrl() {
+        const hostname = window.location.hostname;
+        
+        // Check if running on localhost
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            return `http://${hostname}:3005`;
+        }
+        
+        // Your Vercel backend URL
+        return 'https://lumi-flixs-git-main-pak786-ias-projects.vercel.app';
+    }
     
     loadContentVersion() {
         try {
@@ -145,7 +144,7 @@ class LumiFlix {
             }
             
         } catch (error) {
-            // Silent fail
+            console.error('Auto-update failed:', error);
         }
     }
     
@@ -173,8 +172,6 @@ class LumiFlix {
         return false;
     }
     
-    // ============== CACHE CLEARING ON VERSION CHANGE ==============
-    
     checkAndClearCache() {
         const storedVersion = localStorage.getItem('lumiflix_app_version');
         
@@ -196,8 +193,6 @@ class LumiFlix {
         
         keysToRemove.forEach(key => localStorage.removeItem(key));
     }
-    
-    // ============== FULLSCREEN FIX METHODS ==============
     
     handleFullscreenExit() {
         document.body.classList.remove('fullscreen-active');
@@ -224,7 +219,7 @@ class LumiFlix {
                     this.wasFullscreen = true;
                 })
                 .catch(err => {
-                    // Silent fail
+                    console.error('Fullscreen error:', err);
                 });
         } else {
             document.exitFullscreen()
@@ -233,7 +228,7 @@ class LumiFlix {
                     this.wasFullscreen = false;
                 })
                 .catch(err => {
-                    // Silent fail
+                    console.error('Exit fullscreen error:', err);
                 });
         }
     }
@@ -332,8 +327,6 @@ class LumiFlix {
             });
         }
     }
-    
-    // ============== EXISTING METHODS ==============
     
     loadSearchHistory() {
         try {
@@ -446,11 +439,8 @@ class LumiFlix {
         this.addFavicon();
         
         this.setupOrientationHandling();
-        
         this.setupFullscreenListeners();
-        
         this.setupEscapeKeyHandler();
-        
         this.setupBackButtonHandling();
         
         await this.startAutoUpdate();
@@ -468,22 +458,18 @@ class LumiFlix {
             }
         }, 1500);
         
+        // Check backend health on Vercel
         await this.checkBackendHealth();
         
         this.setupNavigation();
-        
         this.setupSearch();
-        
         this.setupPlayer();
-        
         this.setupTrailerModal();
-        
         this.setupWishlistUI();
         
         this.addEnhancedWatermarkStyles();
         this.addResumeStyles();
         this.addCrewStyles();
-        
         this.addMobileControlsStyles();
         
         await this.loadHome();
@@ -491,8 +477,6 @@ class LumiFlix {
         this.handleRoute();
         window.addEventListener('hashchange', () => this.handleRoute());
     }
-    
-    // ============== MOBILE CONTROLS AUTO-HIDE ==============
     
     addMobileControlsStyles() {
         if (document.getElementById('mobile-controls-styles')) return;
@@ -659,8 +643,6 @@ class LumiFlix {
         
         showControls();
     }
-    
-    // ============== ENHANCED STYLES ==============
     
     addEnhancedWatermarkStyles() {
         if (document.getElementById('enhanced-watermark-styles')) return;
@@ -921,8 +903,6 @@ class LumiFlix {
         this.addEnhancedContentInfoOverlay(container);
     }
     
-    // ============== ALL OTHER EXISTING METHODS REMAIN THE SAME ==============
-    
     setupOrientationHandling() {
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         
@@ -949,7 +929,7 @@ class LumiFlix {
         const container = document.querySelector('.video-container');
         if (container && !document.fullscreenElement) {
             container.requestFullscreen().catch(err => {
-                // Silent fail
+                console.error('Auto fullscreen error:', err);
             });
         }
     }
@@ -2084,12 +2064,14 @@ class LumiFlix {
             
             if (response.ok) {
                 const data = await response.json();
-                // Silent success
+                console.log('✅ Backend connected successfully:', data);
+                this.showNotification('✅ Connected to video server', 'success');
             } else {
-                this.showNotification('Backend not responding. Make sure server.js is running on port 3005', 'warning');
+                this.showNotification('⚠️ Backend server issue', 'warning');
             }
         } catch (error) {
-            this.showNotification('Backend connection failed. Run: node server.js', 'error');
+            console.error('❌ Backend connection failed:', error);
+            this.showNotification('⚠️ Using TMDB for content only', 'info');
         }
     }
     
@@ -2428,6 +2410,7 @@ class LumiFlix {
                     this.updatePlayPauseIcon();
                 })
                 .catch(error => {
+                    console.error('Play error:', error);
                     this.showErrorPanel('Playback Error', 'Unable to play video');
                 });
         } else {
@@ -2588,11 +2571,10 @@ class LumiFlix {
             const response = await fetch(url);
             return response;
         } catch (error) {
+            console.error('Backend fetch error:', error);
             throw error;
         }
     }
-    
-    // ============== PROGRESS FUNCTIONS ==============
     
     saveProgress() {
         if (!this.currentMedia) return;
@@ -2623,8 +2605,6 @@ class LumiFlix {
     getProgressForEpisode(showId, season, episode) {
         return this.watchProgress[`tv-${showId}-s${season}e${episode}`] || 0;
     }
-    
-    // ============== WISHLIST FUNCTIONS ==============
     
     loadWishlist() {
         try {
@@ -2846,8 +2826,6 @@ class LumiFlix {
         });
     }
     
-    // ============== CONTINUE WATCHING FUNCTIONS ==============
-    
     getContinueWatching() {
         const continueItems = [];
         
@@ -2984,8 +2962,6 @@ class LumiFlix {
         }
     }
     
-    // ============== FIXED PLAYBACK FUNCTIONS ==============
-    
     async playMovie(id, resume = true) {
         if (this.isLoading) return;
         this.isLoading = true;
@@ -2997,7 +2973,8 @@ class LumiFlix {
         if (episodeNav) episodeNav.classList.add('hidden');
         
         try {
-            const response = await this.fetchWithBackend(`/movie/${id}?server=all`);
+            // Fetch from Vercel backend with vixsrc server
+            const response = await this.fetchWithBackend(`/movie/${id}?server=vixsrc`);
             
             if (!response.ok) {
                 throw new Error(`Failed to fetch stream: ${response.status}`);
@@ -3006,14 +2983,12 @@ class LumiFlix {
             const data = await response.json();
             console.log('[Playback] Received stream data:', data);
             
-            // Check different possible response structures
+            // Get streams from vixsrc (as per your API docs)
             let streams = [];
             if (data.vixsrc && data.vixsrc.streams) {
                 streams = data.vixsrc.streams;
             } else if (data.streams) {
                 streams = data.streams;
-            } else if (data.url) {
-                streams = [{ file: data.url }];
             }
             
             if (!streams || streams.length === 0) {
@@ -3074,7 +3049,8 @@ class LumiFlix {
         if (episodeNav) episodeNav.classList.remove('hidden');
         
         try {
-            const response = await this.fetchWithBackend(`/tv/${showId}?season=${season}&episode=${episode}&server=all`);
+            // Fetch from Vercel backend with vixsrc server
+            const response = await this.fetchWithBackend(`/tv/${showId}?season=${season}&episode=${episode}&server=vixsrc`);
             
             if (!response.ok) {
                 throw new Error(`Failed to fetch stream: ${response.status}`);
@@ -3083,14 +3059,12 @@ class LumiFlix {
             const data = await response.json();
             console.log('[Playback] Received episode stream data:', data);
             
-            // Check different possible response structures
+            // Get streams from vixsrc
             let streams = [];
             if (data.vixsrc && data.vixsrc.streams) {
                 streams = data.vixsrc.streams;
             } else if (data.streams) {
                 streams = data.streams;
-            } else if (data.url) {
-                streams = [{ file: data.url }];
             }
             
             if (!streams || streams.length === 0) {
@@ -3192,14 +3166,12 @@ class LumiFlix {
             
             const timeout = setTimeout(() => {
                 reject(new Error('Playback timeout'));
-            }, 30000); // Increased timeout to 30 seconds
+            }, 30000);
             
             this.addEnhancedContentInfoOverlay(document.querySelector('.video-container'));
             
-            // Check if the stream is HLS (m3u8)
             const isHLS = stream.file.includes('.m3u8');
             
-            // Try to play the stream
             const attemptPlay = () => {
                 const playPromise = this.player.play();
                 if (playPromise !== undefined) {
@@ -3219,7 +3191,6 @@ class LumiFlix {
             };
             
             if (isHLS && typeof Hls !== 'undefined' && Hls.isSupported()) {
-                // Use HLS.js for better HLS support
                 try {
                     this.hls = new Hls({
                         maxBufferLength: 30,
@@ -3253,18 +3224,15 @@ class LumiFlix {
                     
                 } catch (hlsError) {
                     console.error('[HLS] Setup error:', hlsError);
-                    // Fallback to direct playback
                     this.player.src = stream.file;
                     this.player.load();
                     attemptPlay();
                 }
             } else if (this.player.canPlayType && this.player.canPlayType('application/vnd.apple.mpegurl')) {
-                // Safari native HLS support
                 this.player.src = stream.file;
                 this.player.load();
                 attemptPlay();
             } else {
-                // Direct playback for non-HLS streams
                 this.player.src = stream.file;
                 this.player.load();
                 attemptPlay();
@@ -3285,8 +3253,6 @@ class LumiFlix {
             }, { once: true });
         });
     }
-    
-    // ============== CONTENT LOADING FUNCTIONS ==============
     
     async loadHome() {
         const mainContent = document.getElementById('mainContent');
@@ -3637,6 +3603,7 @@ class LumiFlix {
             this.currentMedia = { id, media_type: type, ...detail };
             
         } catch (error) {
+            console.error('Detail load error:', error);
             mainContent.innerHTML = '<div class="error-message">Failed to load details</div>';
         } finally {
             this.isLoadingDetail = false;
@@ -3789,6 +3756,7 @@ class LumiFlix {
             document.body.style.overflow = 'hidden';
             
         } catch (error) {
+            console.error('Person details error:', error);
             this.showNotification('Failed to load person details', 'error');
         }
     }
@@ -3892,6 +3860,7 @@ class LumiFlix {
             this.attachCardClickHandlers();
             
         } catch (error) {
+            console.error('Search error:', error);
             mainContent.innerHTML = '<div class="error-message">Search failed</div>';
         }
     }
@@ -3908,6 +3877,7 @@ class LumiFlix {
             if (!response.ok) throw new Error(`TMDB fetch failed: ${response.status}`);
             return response.json();
         } catch (error) {
+            console.error('TMDB fetch error:', error);
             throw error;
         }
     }
@@ -4182,7 +4152,7 @@ class LumiFlix {
                     }
                     
                 } catch (error) {
-                    // Silent fail
+                    console.error('Infinite scroll error:', error);
                 }
             }
         }, { threshold: 0.5 });
