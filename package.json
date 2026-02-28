@@ -4,10 +4,11 @@
   "description": "LumiFlix - Movie and TV Show Streaming App",
   "main": "index.html",
   "scripts": {
+    "build": "mkdir -p public && cp index.html app.js styles.css public/",
     "start": "serve .",
-    "build": "echo 'No build step required'"
+    "dev": "serve ."
   },
   "dependencies": {
-    "serve": "^14.0.0"
+    "serve": "^14.2.1"
   }
 }
